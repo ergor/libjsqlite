@@ -10,8 +10,7 @@ public abstract class FsNode extends ModelBase {
     @Db
     private boolean isFile;
     @Db
-    @Fk(FsNode.class)
-    private long parentId;
+    private String name;
     @Db
     private String hash;
     @Db
@@ -19,5 +18,9 @@ public abstract class FsNode extends ModelBase {
     @Db
     private Date modifiedDate;
     @Db
-    private Date syncDate;
+    @Fk(FsNode.class)
+    private long parentId;
+    @Db
+    @Fk(IndexRun.class)
+    private long indexRunId;
 }

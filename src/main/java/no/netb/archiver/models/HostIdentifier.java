@@ -8,4 +8,10 @@ public class HostIdentifier {
     @Db
     @Fk(Host.class)
     private long hostId;
+
+    @Db
+    private String fqdn;
+
+    @Db
+    private String ipAddress;
 }
