@@ -1,23 +1,23 @@
 package no.netb.archiver;
 
+import de.perschon.resultflow.Result;
 import no.netb.archiver.models.Host;
 import no.netb.archiver.models.IndexRun;
 
 import java.io.File;
-import java.io.IOException;
 
 public class Indexer {
 
-    public static void index(Host host, File directory) throws IOException {
+    public static Result<Object, String> index(Host host, File directory) {
 
         if (!directory.isDirectory()) {
-            throw new IOException(String.format("Indexer: %s is not a directory (expected directory).", directory.getAbsolutePath()));
+            return Result.err(String.format("Indexer: %s is not a directory (expected directory).", directory.getAbsolutePath()));
         }
 
         File[] files = directory.listFiles();
 
         if (files == null) {
-            throw new IOException(String.format("Indexer: could not list files in %s", directory.getAbsolutePath()));
+            return Result.err(String.format("Indexer: could not list files in %s", directory.getAbsolutePath()));
         }
 
         IndexRun indexRun = new IndexRun(host);
@@ -25,5 +25,7 @@ public class Indexer {
         for (File file : files) {
 
         }
+
+        return Result.ok(new Object());
     }
 }
