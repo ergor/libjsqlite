@@ -2,8 +2,10 @@ package no.netb.archiver.models;
 
 import no.netb.archiver.annotations.Db;
 import no.netb.archiver.annotations.Fk;
+import no.netb.archiver.annotations.Table;
 
-public class HostIdentifier {
+@Table
+public class HostIdentifier extends ModelBase {
 
     @Db
     @Fk(Host.class)

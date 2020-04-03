@@ -1,10 +1,14 @@
 package no.netb.archiver.repository;
 
+import de.perschon.resultflow.Result;
 import no.netb.archiver.annotations.Db;
 import no.netb.archiver.common.Pair;
-import no.netb.archiver.models.ModelBase;
+import no.netb.archiver.models.*;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.net.URL;
 import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -19,8 +23,67 @@ public class Repository {
             System.out.println("Opened database successfully");
         } catch (SQLException e) {
             e.printStackTrace();
-            System.exit(0);
+            System.exit(1);
         }
+    }
+
+    public static List<Class<? extends ModelBase>> modelClasses;
+    static {
+
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        assert classLoader != null;
+
+        List<Class<? extends ModelBase>> list = new ArrayList<>();
+
+        try {
+            Enumeration<URL> resources = classLoader.getResources("no/netb/archiver/models");
+            List<File> dirs = new ArrayList<>();
+            while (resources.hasMoreElements()) {
+                URL resource = resources.nextElement();
+                dirs.add(new File(resource.getFile()));
+            }
+            for (File dir : dirs) {
+                list.addAll()
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+
+
+
+        list.add(FsNode.class);
+        list.add(Host.class);
+        list.add(HostIdentifier.class);
+        list.add(IndexRun.class);
+        list.add(IndexRunConnector.class);
+
+        modelClasses = Collections.unmodifiableList(list);
+    }
+
+    /**
+     * Recursive method used to find all classes in a given directory and subdirs.
+     *
+     * @param directory   The base directory
+     * @param packageName The package name for classes found inside the base directory
+     * @return The classes
+     * @throws ClassNotFoundException
+     */
+    private static List<Class> findClasses(File directory, String packageName) throws ClassNotFoundException {
+        List<Class> classes = new ArrayList<>();
+        if (!directory.exists()) {
+            return classes;
+        }
+        File[] files = directory.listFiles();
+        for (File file : files) {
+            if (file.isDirectory()) {
+                assert !file.getName().contains(".");
+                classes.addAll(findClasses(file, packageName + "." + file.getName()));
+            } else if (file.getName().endsWith(".class")) {
+                classes.add(Class.forName(packageName + '.' + file.getName().substring(0, file.getName().length() - 6)));
+            }
+        }
+        return classes;
     }
 
     /* CREATE:
@@ -38,12 +101,12 @@ public class Repository {
     /* GET:
      */
 
-    private static Pair<String, String> getTableName(Class modelClass) {
+    private static<T extends ModelBase> Pair<String, String> getTableName(Class<T> modelClass) {
         String name = modelClass.getSimpleName();
         return new Pair<>(name, String.valueOf(name.toLowerCase().charAt(0)));
     }
 
-    private static Set<Field> collectColumnFields(Class modelClass, Set<Field> collection) {
+    private static<T> Set<Field> collectColumnFields(Class<T> modelClass, Set<Field> collection) {
         if (modelClass == null) {
             return collection;
         }
@@ -95,7 +158,7 @@ public class Repository {
     }
 
 
-    private static <T extends ModelBase> T[] executeN(Class<T> modelClass, String query, Object... args) {
+    private static <T extends ModelBase> Result<T[], Exception> executeN(Class<T> modelClass, String query, Object... args) {
         try {
             PreparedStatement preparedStatement = dbconn.prepareStatement(query);
             if (args != null) {
@@ -104,18 +167,13 @@ public class Repository {
                 }
             }
             ResultSet resultSet = preparedStatement.executeQuery();
-            return mapToModel(modelClass, resultSet);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InstantiationException e) {
-            e.printStackTrace();
+            return Result.ok(mapToModel(modelClass, resultSet));
+        } catch (Exception e) {
+            return Result.err(e);
         }
-        return (T[]) new Object[0];
     }
 
-    public static <T extends ModelBase> T[] selectN(Class<T> modelClass, String where, Object... args) {
+    public static <T extends ModelBase> Result<T[], Exception> selectN(Class<T> modelClass, String where, Object... args) {
         Pair<String, String> names = getTableName(modelClass);
         String tableName = names.getFirst();
         String tableVar = names.getSecond();
@@ -129,7 +187,7 @@ public class Repository {
         return executeN(modelClass, query, args);
     }
 
-    public static <T extends ModelBase> T getById(Class<T> modelClass, long id) {
-        return selectN(modelClass, "WHERE id = ?", id)[0];
-    }
+    //public static <T extends ModelBase> T getById(Class<T> modelClass, long id) {
+    //    return selectN(modelClass, "WHERE id = ?", id)[0];
+    //}
 }
