@@ -1,0 +1,13 @@
+SELECT * FROM Directory;
+
+CREATE TABLE "Directory" (
+	"id"	INTEGER PRIMARY KEY,
+	"isFile"	INTEGER NOT NULL DEFAULT 1,
+	"name"	TEXT NOT NULL,
+	"hash"	TEXT NOT NULL,
+	"creationDate"	INTEGER NOT NULL DEFAULT 0,
+	"modifiedDate"	INTEGER NOT NULL DEFAULT 0,
+	"parentId"	INTEGER DEFAULT NULL,
+	FOREIGN KEY("parentId") REFERENCES "Directory"
+);
+

@@ -7,18 +7,11 @@ public abstract class ModelBase {
     @Db
     private long id;
 
-    /* CREATE:
-     * INSERT INTO <class name> VALUES <field name,value pairs>
-     */
+    public long getId() {
+        return id;
+    }
 
-    /* SAVE:
-     * if not exists: CREATE(all values)
-     * else: UPDATE <class name> SET <field name,value pairs> WHERE id = <this.id>
-     */
+    public void createTable() {
 
-    /* EXISTS:
-     */
-
-    /* GET:
-     */
+    }
 }

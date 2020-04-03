@@ -14,6 +14,7 @@ public class IndexRunConnector {
 
     @Db
     private String uuid; // this will be the logical run id.
+
     @Db
     @Fk(IndexRun.class)
     private long indexRunId;
