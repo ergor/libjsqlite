@@ -1,15 +1,14 @@
 package no.netb.archiver.repository;
 
 import de.perschon.resultflow.Result;
-import no.netb.archiver.annotations.Db;
 import no.netb.archiver.common.Pair;
 import no.netb.archiver.common.ReflectionUtil;
 import no.netb.archiver.models.*;
 
 import java.lang.reflect.Field;
+
 import java.sql.*;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class Repository {
 
@@ -25,6 +24,9 @@ public class Repository {
         }
     }
 
+    public static Connection getConnection() {
+        return dbconn;
+    }
 
     /* CREATE:
      * INSERT INTO <class name> VALUES <field name,value pairs>
@@ -48,7 +50,7 @@ public class Repository {
 
     private static Object mapField(ResultSet resultSet, Field field) throws SQLException {
         String name = field.getName();
-        Class fieldType = field.getType();
+        Class<?> fieldType = field.getType();
 
         if (fieldType == long.class) {
             return resultSet.getLong(name);
@@ -56,14 +58,17 @@ public class Repository {
         if (fieldType == boolean.class) {
             return resultSet.getInt(name) != 0;
         }
-        else if (fieldType == Timestamp.class) {
+        if (fieldType == Timestamp.class) {
             return new Timestamp(resultSet.getLong(name));
+        }
+        if (fieldType == String.class) {
+            return resultSet.getString(name);
         }
 
         throw new IllegalStateException(String.format("Exhausted all field mapping types: no mapping for type \"%s\"", fieldType.getName()));
     }
 
-    private static <T extends ModelBase> T[] mapToModel(Class<T> modelClass, ResultSet resultSet) throws SQLException, IllegalAccessException, InstantiationException {
+    private static <T extends ModelBase> List<T> mapToModel(Class<T> modelClass, ResultSet resultSet) throws SQLException, IllegalAccessException, InstantiationException {
 
         List<T> rows = new ArrayList<>();
         Set<Field> columnFields = ReflectionUtil.getAllDbFields(modelClass);
@@ -81,11 +86,11 @@ public class Repository {
             rows.add(obj);
         }
 
-        return (T[]) rows.toArray();
+        return rows;
     }
 
 
-    private static <T extends ModelBase> Result<T[], Exception> executeN(Class<T> modelClass, String query, Object... args) {
+    private static <T extends ModelBase> Result<List<T>, Exception> executeN(Class<T> modelClass, String query, Object... args) {
         try {
             PreparedStatement preparedStatement = dbconn.prepareStatement(query);
             if (args != null) {
@@ -100,7 +105,7 @@ public class Repository {
         }
     }
 
-    public static <T extends ModelBase> Result<T[], Exception> selectN(Class<T> modelClass, String where, Object... args) {
+    public static <T extends ModelBase> Result<List<T>, Exception> selectN(Class<T> modelClass, String where, Object... args) {
         Pair<String, String> names = getTableName(modelClass);
         String tableName = names.getFirst();
         String tableVar = names.getSecond();
