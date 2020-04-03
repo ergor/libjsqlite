@@ -2,7 +2,6 @@ package no.netb.archiver.models;
 
 import no.netb.archiver.annotations.Db;
 import no.netb.archiver.annotations.Fk;
-import no.netb.archiver.annotations.Table;
 
 /**
  * To manually connect multiple index runs and mark them as logically 1 index run.
@@ -11,7 +10,6 @@ import no.netb.archiver.annotations.Table;
  * and between the runs you are sure you didn't modify the dirs under indexing.
  * Then you can "connect" the runs together as 1 logical run.
  */
-@Table
 public class IndexRunConnector extends ModelBase {
 
     @Db

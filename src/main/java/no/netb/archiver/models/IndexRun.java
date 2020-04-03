@@ -2,11 +2,9 @@ package no.netb.archiver.models;
 
 import no.netb.archiver.annotations.Db;
 import no.netb.archiver.annotations.Fk;
-import no.netb.archiver.annotations.Table;
 
 import java.sql.Timestamp;
 
-@Table
 public class IndexRun extends ModelBase {
 
     @Db
