@@ -1,8 +1,8 @@
 package no.netb.libjsqlite;
 
 import no.netb.libjcommon.result.Result;
-import no.netb.libjsqlite.annotations.Db;
 import no.netb.libjcommon.tuples.Pair;
+import no.netb.libjsqlite.annotations.Db;
 
 import java.lang.reflect.Field;
 import java.sql.*;
@@ -27,6 +27,10 @@ public class Jsqlite {
         return dbconn;
     }
 
+    public static Set<Field> getAllDbFields(Class<?> modelClass) {
+        return getAllDbFields(modelClass, new HashSet<>());
+    }
+
     /* CREATE:
      * INSERT INTO <class name> VALUES <field name,value pairs>
      */
@@ -39,11 +43,33 @@ public class Jsqlite {
     /* EXISTS:
      */
 
-    /* GET:
-     */
+    public static <T extends BaseModel> Result<List<T>, Exception> selectN(Class<T> modelClass, String where, Object... args) {
+        Pair<String, String> names = getTableName(modelClass);
+        String tableName = names.getA();
+        String tableVar = names.getB();
 
-    public static Set<Field> getAllDbFields(Class<?> modelClass) {
-        return getAllDbFields(modelClass, new HashSet<>());
+        String query = String.format("SELECT %s.* FROM %s %s %s",
+                tableVar,
+                tableName,
+                tableVar,
+                where);
+
+        return executeN(modelClass, query, args);
+    }
+
+    private static <T extends BaseModel> Result<List<T>, Exception> executeN(Class<T> modelClass, String query, Object... args) {
+        try {
+            PreparedStatement preparedStatement = dbconn.prepareStatement(query);
+            if (args != null) {
+                for (int i = 0; i < args.length; i++) {
+                    preparedStatement.setObject(i + 1, args[i]);
+                }
+            }
+            ResultSet resultSet = preparedStatement.executeQuery();
+            return Result.ok(mapToModel(modelClass, resultSet));
+        } catch (Exception e) {
+            return Result.err(e);
+        }
     }
 
     private static Set<Field> getAllDbFields(Class<?> modelClass, Set<Field> collection) {
@@ -64,7 +90,28 @@ public class Jsqlite {
         return new Pair<>(name, String.valueOf(name.toLowerCase().charAt(0)));
     }
 
-    private static Object mapField(ResultSet resultSet, Field field) throws SQLException {
+    private static <T extends BaseModel> List<T> mapToModel(Class<T> modelClass, ResultSet resultSet) throws SQLException, IllegalAccessException, InstantiationException {
+
+        List<T> rows = new ArrayList<>();
+        Set<Field> columnFields = getAllDbFields(modelClass);
+
+        while (resultSet.next()) {
+            T obj = modelClass.newInstance();
+            for (Field field : columnFields) {
+                field.setAccessible(true);
+
+                Object value = mapToField(resultSet, field);
+
+                field.set(obj, value);
+                field.setAccessible(false);
+            }
+            rows.add(obj);
+        }
+
+        return rows;
+    }
+
+    private static Object mapToField(ResultSet resultSet, Field field) throws SQLException {
         String name = field.getName();
         Class<?> fieldType = field.getType();
 
@@ -82,56 +129,5 @@ public class Jsqlite {
         }
 
         throw new IllegalStateException(String.format("Exhausted all field mapping types: no mapping for type \"%s\"", fieldType.getName()));
-    }
-
-    private static <T extends BaseModel> List<T> mapToModel(Class<T> modelClass, ResultSet resultSet) throws SQLException, IllegalAccessException, InstantiationException {
-
-        List<T> rows = new ArrayList<>();
-        Set<Field> columnFields = getAllDbFields(modelClass);
-
-        while (resultSet.next()) {
-            T obj = modelClass.newInstance();
-            for (Field field : columnFields) {
-                field.setAccessible(true);
-
-                Object value = mapField(resultSet, field);
-
-                field.set(obj, value);
-                field.setAccessible(false);
-            }
-            rows.add(obj);
-        }
-
-        return rows;
-    }
-
-
-    private static <T extends BaseModel> Result<List<T>, Exception> executeN(Class<T> modelClass, String query, Object... args) {
-        try {
-            PreparedStatement preparedStatement = dbconn.prepareStatement(query);
-            if (args != null) {
-                for (int i = 0; i < args.length; i++) {
-                    preparedStatement.setObject(i + 1, args[i]);
-                }
-            }
-            ResultSet resultSet = preparedStatement.executeQuery();
-            return Result.ok(mapToModel(modelClass, resultSet));
-        } catch (Exception e) {
-            return Result.err(e);
-        }
-    }
-
-    public static <T extends BaseModel> Result<List<T>, Exception> selectN(Class<T> modelClass, String where, Object... args) {
-        Pair<String, String> names = getTableName(modelClass);
-        String tableName = names.getA();
-        String tableVar = names.getB();
-
-        String query = String.format("SELECT %s.* FROM %s %s %s",
-                tableVar,
-                tableName,
-                tableVar,
-                where);
-
-        return executeN(modelClass, query, args);
     }
 }
