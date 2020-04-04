@@ -1,16 +1,15 @@
-package no.netb.archiver.repository;
+package no.netb.libjsqlite;
 
 import de.perschon.resultflow.Result;
-import no.netb.archiver.common.Pair;
-import no.netb.archiver.common.ReflectionUtil;
-import no.netb.archiver.models.*;
+import no.netb.libjsqlite.annotations.Db;
+import no.netb.libjsqlite.common.Pair;
 
 import java.lang.reflect.Field;
-
 import java.sql.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
-public class Repository {
+public class Jsqlite {
 
     private static Connection dbconn;
     static {
@@ -43,7 +42,24 @@ public class Repository {
     /* GET:
      */
 
-    private static<T extends ModelBase> Pair<String, String> getTableName(Class<T> modelClass) {
+    public static Set<Field> getAllDbFields(Class<?> modelClass) {
+        return getAllDbFields(modelClass, new HashSet<>());
+    }
+
+    private static Set<Field> getAllDbFields(Class<?> modelClass, Set<Field> collection) {
+        if (modelClass == null) {
+            return collection;
+        }
+        Field[] fields = modelClass.getDeclaredFields();
+        collection.addAll(
+                Arrays.stream(fields)
+                        .filter(f -> f.isAnnotationPresent(Db.class))
+                        .collect(Collectors.toSet())
+        );
+        return getAllDbFields(modelClass.getSuperclass(), collection);
+    }
+
+    private static<T extends BaseModel> Pair<String, String> getTableName(Class<T> modelClass) {
         String name = modelClass.getSimpleName();
         return new Pair<>(name, String.valueOf(name.toLowerCase().charAt(0)));
     }
@@ -68,10 +84,10 @@ public class Repository {
         throw new IllegalStateException(String.format("Exhausted all field mapping types: no mapping for type \"%s\"", fieldType.getName()));
     }
 
-    private static <T extends ModelBase> List<T> mapToModel(Class<T> modelClass, ResultSet resultSet) throws SQLException, IllegalAccessException, InstantiationException {
+    private static <T extends BaseModel> List<T> mapToModel(Class<T> modelClass, ResultSet resultSet) throws SQLException, IllegalAccessException, InstantiationException {
 
         List<T> rows = new ArrayList<>();
-        Set<Field> columnFields = ReflectionUtil.getAllDbFields(modelClass);
+        Set<Field> columnFields = getAllDbFields(modelClass);
 
         while (resultSet.next()) {
             T obj = modelClass.newInstance();
@@ -90,7 +106,7 @@ public class Repository {
     }
 
 
-    private static <T extends ModelBase> Result<List<T>, Exception> executeN(Class<T> modelClass, String query, Object... args) {
+    private static <T extends BaseModel> Result<List<T>, Exception> executeN(Class<T> modelClass, String query, Object... args) {
         try {
             PreparedStatement preparedStatement = dbconn.prepareStatement(query);
             if (args != null) {
@@ -105,7 +121,7 @@ public class Repository {
         }
     }
 
-    public static <T extends ModelBase> Result<List<T>, Exception> selectN(Class<T> modelClass, String where, Object... args) {
+    public static <T extends BaseModel> Result<List<T>, Exception> selectN(Class<T> modelClass, String where, Object... args) {
         Pair<String, String> names = getTableName(modelClass);
         String tableName = names.getFirst();
         String tableVar = names.getSecond();
@@ -118,8 +134,4 @@ public class Repository {
 
         return executeN(modelClass, query, args);
     }
-
-    //public static <T extends ModelBase> T getById(Class<T> modelClass, long id) {
-    //    return selectN(modelClass, "WHERE id = ?", id)[0];
-    //}
 }

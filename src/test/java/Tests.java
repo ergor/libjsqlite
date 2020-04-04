@@ -1,23 +1,33 @@
 import de.perschon.resultflow.Result;
-import no.netb.archiver.ErrorState;
-import no.netb.archiver.Indexer;
-import no.netb.archiver.models.FsNode;
-import no.netb.archiver.models.Host;
-import no.netb.archiver.models.TablesInit;
-import no.netb.archiver.repository.Repository;
+import models.ReferencingSomeTable;
+import models.SomeTable;
+import no.netb.libjsqlite.BaseModel;
+import no.netb.libjsqlite.Jsqlite;
+import no.netb.libjsqlite.TablesInit;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.io.File;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class Tests {
 
+    private static List<Class<? extends BaseModel>> modelClasses;
+    static {
+        List<Class<? extends BaseModel>> list = new ArrayList<>();
+
+        list.add(SomeTable.class);
+        list.add(ReferencingSomeTable.class);
+
+        modelClasses = Collections.unmodifiableList(list);
+    }
+
     @BeforeClass
     public static void testCreateTables() {
         try {
-            TablesInit.createTables();
+            TablesInit.createTables(modelClasses);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -25,16 +35,10 @@ public class Tests {
 
     @Test
     public void testSelectN() {
-        Result<List<FsNode>, Exception> selectResult = Repository.selectN(FsNode.class, "WHERE f.isFile = ?", 0);
+        Result<List<ReferencingSomeTable>, Exception> selectResult = Jsqlite.selectN(ReferencingSomeTable.class, "WHERE r.someTableId= ?", 1);
         if (selectResult.isErr()) {
             throw new RuntimeException("select failed:", selectResult.getError().get());
         }
-        List<FsNode> fsNodes = selectResult.unwrap();
-    }
-
-    @Test
-    public void testIndex() {
-        Result<List<Host>, Exception> selectResult = Repository.selectN(Host.class, "WHERE h.id = ?", 1);
-        Result<Object, String> indexResult = Indexer.index(selectResult.unwrap().get(0), new File("/home"));
+        List<ReferencingSomeTable> fsNodes = selectResult.unwrap();
     }
 }

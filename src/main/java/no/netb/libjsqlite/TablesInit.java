@@ -1,45 +1,36 @@
-package no.netb.archiver.models;
+package no.netb.libjsqlite;
 
-import no.netb.archiver.annotations.Db;
-import no.netb.archiver.annotations.Fk;
-import no.netb.archiver.annotations.Models;
-import no.netb.archiver.annotations.Pk;
-import no.netb.archiver.common.ReflectionUtil;
-import no.netb.archiver.repository.Repository;
+import no.netb.libjsqlite.annotations.Db;
+import no.netb.libjsqlite.annotations.Fk;
+import no.netb.libjsqlite.annotations.Pk;
 
 import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-/**
- * The {@link no.netb.archiver.models} package must be loaded for {@link #createTables()} to work.
- * That means the init function must be inside this package for it to work.
- */
 public class TablesInit {
 
-    public static void createTables() throws SQLException {
-        Package[] packages = Package.getPackages();
+    public static void createTables(List<Class<? extends BaseModel>> models) throws SQLException {
         System.out.println("Table initialization:");
-        for (Package p : packages) {
-            Models annotation = p.getAnnotation(Models.class);
-            if (annotation != null) {
-                Class<? extends ModelBase>[] models = annotation.models();
-                for (Class<? extends ModelBase> modelClass : models) {
-                    createTable(modelClass);
-                }
-            }
+
+        for (Class<? extends BaseModel> modelClass : models) {
+            createTable(modelClass);
         }
+
     }
 
-    private static void createTable(Class<? extends ModelBase> modelClass) throws SQLException {
+    private static<T extends BaseModel> void createTable(Class<T> modelClass) throws SQLException {
 
         List<Field> idFirstColumns = new ArrayList<>();
         {
-            Set<Field> columns = ReflectionUtil.getAllDbFields(modelClass);
+            Set<Field> columns = Jsqlite.getAllDbFields(modelClass);
             Field primaryKey = columns.stream()
                     .filter(f -> f.isAnnotationPresent(Pk.class))
                     .findAny()
@@ -61,7 +52,7 @@ public class TablesInit {
 
         System.out.println(statement);
 
-        Connection conn = Repository.getConnection();
+        Connection conn = Jsqlite.getConnection();
         conn.createStatement().execute(statement);
         conn.commit();
     }
