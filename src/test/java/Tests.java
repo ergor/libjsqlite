@@ -1,4 +1,4 @@
-import de.perschon.resultflow.Result;
+import no.netb.libjcommon.result.Result;
 import models.ReferencingSomeTable;
 import models.SomeTable;
 import no.netb.libjsqlite.BaseModel;
@@ -37,7 +37,7 @@ public class Tests {
     public void testSelectN() {
         Result<List<ReferencingSomeTable>, Exception> selectResult = Jsqlite.selectN(ReferencingSomeTable.class, "WHERE r.someTableId= ?", 1);
         if (selectResult.isErr()) {
-            throw new RuntimeException("select failed:", selectResult.getError().get());
+            throw new RuntimeException("select failed:", selectResult.getErr().get());
         }
         List<ReferencingSomeTable> fsNodes = selectResult.unwrap();
     }

@@ -1,8 +1,8 @@
 package no.netb.libjsqlite;
 
-import de.perschon.resultflow.Result;
+import no.netb.libjcommon.result.Result;
 import no.netb.libjsqlite.annotations.Db;
-import no.netb.libjsqlite.common.Pair;
+import no.netb.libjcommon.tuples.Pair;
 
 import java.lang.reflect.Field;
 import java.sql.*;
@@ -123,8 +123,8 @@ public class Jsqlite {
 
     public static <T extends BaseModel> Result<List<T>, Exception> selectN(Class<T> modelClass, String where, Object... args) {
         Pair<String, String> names = getTableName(modelClass);
-        String tableName = names.getFirst();
-        String tableVar = names.getSecond();
+        String tableName = names.getA();
+        String tableVar = names.getB();
 
         String query = String.format("SELECT %s.* FROM %s %s %s",
                 tableVar,
