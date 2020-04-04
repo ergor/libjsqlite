@@ -7,11 +7,7 @@ import no.netb.libjsqlite.annotations.Pk;
 import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -23,7 +19,6 @@ public class TablesInit {
         for (Class<? extends BaseModel> modelClass : models) {
             createTable(modelClass);
         }
-
     }
 
     private static<T extends BaseModel> void createTable(Class<T> modelClass) throws SQLException {
@@ -72,27 +67,17 @@ public class TablesInit {
     }
 
     private static String makeField(Field field) {
-        return String.format("\"%s\" %s %s %s",
-                field.getName(),
-                mapType(field),
-                field.getAnnotation(Db.class).nullable() ? "" : "NOT NULL", // TODO: default values
-                field.isAnnotationPresent(Pk.class) ? "PRIMARY KEY" : "");
-    }
+        Class<?> fieldType = field.getType();
+        SqliteType sqliteType = SqliteType.mapJavaType(fieldType)
+                .orElseThrow(() -> new IllegalStateException("TablesInit: field types exhausted. No mapping for: " + fieldType.getName()));
 
-    private static String mapType(Field field) {
-        Class<?> type = field.getType();
-        if (type == boolean.class
-                || type == Timestamp.class
-                || type == byte.class
-                || type == short.class
-                || type == int.class
-                || type == long.class) {
-            return "INTEGER";
-        }
-        if (type == String.class) {
-            return "TEXT";
-        }
+        boolean nullable = field.getAnnotation(Db.class).nullable();
+        boolean primaryKey = field.isAnnotationPresent(Pk.class);
 
-        throw new IllegalStateException("TableInit: field types exhausted. No mapping for: " + type.getName());
+        String columnDef = String.format("\"%s\" %s", field.getName(), sqliteType.getName()); // "columnName" TYPE
+        String constraint1 = nullable ? "DEFAULT NULL" : String.format("NOT NULL DEFAULT %s", sqliteType.getDefaultValue()); // DEFAULT NULL | NOT NULL DEFAULT x
+        String constraint2 = primaryKey ? "PRIMARY KEY ASC AUTOINCREMENT" : ""; //
+
+        return String.join(" ", columnDef, constraint1, constraint2);
     }
 }

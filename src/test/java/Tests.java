@@ -14,7 +14,7 @@ import java.util.List;
 
 public class Tests {
 
-    private static List<Class<? extends BaseModel>> modelClasses;
+    private static final List<Class<? extends BaseModel>> modelClasses;
     static {
         List<Class<? extends BaseModel>> list = new ArrayList<>();
 
@@ -28,6 +28,9 @@ public class Tests {
     public static void testCreateTables() {
         try {
             TablesInit.createTables(modelClasses);
+
+            SomeTable someTable = new SomeTable(420, "hello");
+
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
