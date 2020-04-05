@@ -28,13 +28,16 @@ public class Jsqlite {
         return dbconn;
     }
 
-    /* SAVE:
-     * if not exists: CREATE(all values)
-     * else: UPDATE <class name> SET <field name,value pairs> WHERE id = <this.id>
-     */
-
     /* EXISTS:
      */
+
+
+    public static<T extends BaseModel> UpdateResult save(T model) {
+        if (model.isNew()) {
+            return insert(model);
+        }
+        return update(model);
+    }
 
     public static<T extends BaseModel> UpdateResult update(T model) {
         try {
