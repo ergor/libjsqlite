@@ -35,7 +35,7 @@ public class TablesInit {
 
         List<Field> idFirstColumns = new ArrayList<>();
         {
-            Set<Field> columns = Jsqlite.getAllDbFields(modelClass);
+            Set<Field> columns = Jsqlite.getAllColumnFields(modelClass);
             Field primaryKey = columns.stream()
                     .filter(f -> f.isAnnotationPresent(Pk.class))
                     .findAny()

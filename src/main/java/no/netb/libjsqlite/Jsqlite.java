@@ -29,10 +29,6 @@ public class Jsqlite {
         return dbconn;
     }
 
-    public static Set<Field> getAllDbFields(Class<?> modelClass) {
-        return getAllDbFields(modelClass, new HashSet<>());
-    }
-
     /* CREATE:
      * INSERT INTO <class name> VALUES <field name,value pairs>
      */
@@ -52,7 +48,7 @@ public class Jsqlite {
             List<String> columns = new ArrayList<>();
             List<Object> values = new ArrayList<>();
 
-            for (Field field : getAllDbFields(model.getClass())) {
+            for (Field field : getAllColumnFields(model.getClass())) {
                 field.setAccessible(true);
                 if (field.isAnnotationPresent(Pk.class)) {
                     Result<Integer, Exception> maxIdResult = getMaxId(model, field);
@@ -86,6 +82,18 @@ public class Jsqlite {
         }
     }
 
+    private static<T extends BaseModel> Result<Integer, Exception> getMaxId(T model, Field idField) {
+        try {
+            String tableName = getTableName(model.getClass()).getA();
+            String sql = String.format("SELECT MAX(%s) AS max_id FROM \"%s\"", idField.getName(), tableName);
+            PreparedStatement preparedStatement = dbconn.prepareStatement(sql);
+            Integer maxId = preparedStatement.executeQuery().getInt("max_id");
+            return Result.ok(maxId);
+        } catch (SQLException e) {
+            return Result.err(e);
+        }
+    }
+
     public static <T extends BaseModel> Result<List<T>, Exception> selectN(Class<T> modelClass, String where, Object... args) {
         Pair<String, String> names = getTableName(modelClass);
         String tableName = names.getA();
@@ -109,25 +117,17 @@ public class Jsqlite {
                 }
             }
             ResultSet resultSet = preparedStatement.executeQuery();
-            return Result.ok(mapToModel(modelClass, resultSet));
+            return Result.ok(mapToJavaModel(modelClass, resultSet));
         } catch (Exception e) {
             return Result.err(e);
         }
     }
 
-    private static<T extends BaseModel> Result<Integer, Exception> getMaxId(T model, Field idField) {
-        try {
-            String tableName = getTableName(model.getClass()).getA();
-            String sql = String.format("SELECT MAX(%s) AS max_id FROM \"%s\"", idField.getName(), tableName);
-            PreparedStatement preparedStatement = dbconn.prepareStatement(sql);
-            Integer maxId = preparedStatement.executeQuery().getInt("max_id");
-            return Result.ok(maxId);
-        } catch (SQLException e) {
-            return Result.err(e);
-        }
+    public static Set<Field> getAllColumnFields(Class<?> modelClass) {
+        return getAllColumnFields(modelClass, new HashSet<>());
     }
 
-    private static Set<Field> getAllDbFields(Class<?> modelClass, Set<Field> collection) {
+    private static Set<Field> getAllColumnFields(Class<?> modelClass, Set<Field> collection) {
         if (modelClass == null) {
             return collection;
         }
@@ -137,7 +137,7 @@ public class Jsqlite {
                         .filter(f -> f.isAnnotationPresent(Db.class))
                         .collect(Collectors.toSet())
         );
-        return getAllDbFields(modelClass.getSuperclass(), collection);
+        return getAllColumnFields(modelClass.getSuperclass(), collection);
     }
 
     /**
@@ -148,17 +148,17 @@ public class Jsqlite {
         return new Pair<>(name, String.valueOf(name.toLowerCase().charAt(0)));
     }
 
-    private static <T extends BaseModel> List<T> mapToModel(Class<T> modelClass, ResultSet resultSet) throws SQLException, IllegalAccessException, InstantiationException {
+    private static <T extends BaseModel> List<T> mapToJavaModel(Class<T> modelClass, ResultSet resultSet) throws SQLException, IllegalAccessException, InstantiationException {
 
         List<T> rows = new ArrayList<>();
-        Set<Field> columnFields = getAllDbFields(modelClass);
+        Set<Field> columnFields = getAllColumnFields(modelClass);
 
         while (resultSet.next()) {
             T obj = modelClass.newInstance();
             for (Field field : columnFields) {
                 field.setAccessible(true);
 
-                Object value = mapToField(resultSet, field);
+                Object value = mapToJavaValue(resultSet, field);
 
                 field.set(obj, value);
                 field.setAccessible(false);
@@ -169,7 +169,7 @@ public class Jsqlite {
         return rows;
     }
 
-    private static Object mapToField(ResultSet resultSet, Field field) throws SQLException {
+    private static Object mapToJavaValue(ResultSet resultSet, Field field) throws SQLException {
         String name = field.getName();
         Class<?> fieldType = field.getType();
 
@@ -186,16 +186,6 @@ public class Jsqlite {
             return resultSet.getString(name);
         }
 
-        throw new IllegalStateException(String.format("Exhausted all field mapping types: no mapping for type \"%s\"", fieldType.getName()));
-    }
-
-    private static<T extends BaseModel> Map<String, Object> getColumnsAndValues(T entry) throws IllegalAccessException {
-        Map<String, Object> colsAndVals = new HashMap<>();
-        Set<Field> fields = getAllDbFields(entry.getClass());
-        for (Field field : fields) {
-            field.setAccessible(true);
-            colsAndVals.put(field.getName(), field.get(entry));
-        }
-        return colsAndVals;
+        throw new IllegalStateException(String.format("Exhausted all java value mappings: no mapping for type \"%s\"", fieldType.getName()));
     }
 }
