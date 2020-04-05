@@ -1,16 +1,17 @@
-import no.netb.libjcommon.result.Result;
 import models.ReferencingSomeTable;
 import models.SomeTable;
+import no.netb.libjcommon.result.Result;
 import no.netb.libjsqlite.BaseModel;
 import no.netb.libjsqlite.Jsqlite;
 import no.netb.libjsqlite.TablesInit;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 public class Tests {
 
@@ -24,24 +25,45 @@ public class Tests {
         modelClasses = Collections.unmodifiableList(list);
     }
 
+    private static SomeTable someTable;
+    private static ReferencingSomeTable referencingSomeTable;
+
     @BeforeClass
     public static void testCreateTables() {
-        try {
-            TablesInit.createTables(modelClasses);
+        throwIfErr(TablesInit.createTables(modelClasses));
 
-            SomeTable someTable = new SomeTable(420, "hello");
+        someTable = new SomeTable(420, "hello");
+        throwIfErr(Jsqlite.insert(someTable));
+        //insertResult.getOk().flatMap(DbOkAction::commit).ifPresent(Exception::printStackTrace);
 
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+        referencingSomeTable = new ReferencingSomeTable("hello from the other side", someTable.getId());
+        throwIfErr(Jsqlite.insert(referencingSomeTable));
     }
 
     @Test
     public void testSelectN() {
         Result<List<ReferencingSomeTable>, Exception> selectResult = Jsqlite.selectN(ReferencingSomeTable.class, "WHERE r.someTableId= ?", 1);
-        if (selectResult.isErr()) {
-            throw new RuntimeException("select failed:", selectResult.getErr().get());
-        }
-        List<ReferencingSomeTable> fsNodes = selectResult.unwrap();
+        throwIfErr(selectResult);
+
+        List<ReferencingSomeTable> models = selectResult.unwrap();
+        assertEquals("There shall be one row matching the query", 1, models.size());
+
+        ReferencingSomeTable model = models.get(0);
+        assertEquals("fields shall be identical", referencingSomeTable.getOtherText(), model.getOtherText());
+        assertEquals("fields shall be identical", referencingSomeTable.getSomeTableId(), model.getSomeTableId());
+
+        Result<List<SomeTable>, Exception> selectResult2 = Jsqlite.selectN(SomeTable.class, "WHERE s.id = ?", model.getSomeTableId());
+        throwIfErr(selectResult2);
+
+        List<SomeTable> models2 = selectResult2.unwrap();
+        assertEquals("There shall be one row matching the query", 1, models2.size());
+
+        SomeTable model2 = models2.get(0);
+        assertEquals("fields shall be identical", someTable.getText(), model2.getText());
+        assertEquals("fields shall be identical", someTable.getX(), model2.getX());
+    }
+
+    private static void throwIfErr(Result<?, ? extends Exception> result) {
+        result.getErr().ifPresent(e -> {throw new RuntimeException(e);});
     }
 }

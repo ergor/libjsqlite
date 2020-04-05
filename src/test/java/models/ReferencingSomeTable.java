@@ -13,6 +13,10 @@ public class ReferencingSomeTable extends BaseModel {
     @Fk(SomeTable.class)
     private long someTableId;
 
+    public ReferencingSomeTable() {
+
+    }
+
     public ReferencingSomeTable(String otherText, long someTableId) {
         this.otherText = otherText;
         this.someTableId = someTableId;

@@ -2,28 +2,35 @@ package no.netb.libjsqlite;
 
 import java.sql.Timestamp;
 import java.util.*;
+import java.util.function.Function;
 
 public enum SqliteType {
-    INTEGER("INTEGER", "0"),
-    TEXT("TEXT", "\"\"");
+    INTEGER("INTEGER", 0, Object::toString),
+    TEXT("TEXT", "", value -> String.format("\"%s\"", value));
 
     private String name;
-    private String defaultValue;
+    private Object defaultValue;
+    private Function<Object, String> valueForQueryMapper;
 
-    SqliteType(String name, String defaultValue) {
+    SqliteType(String name, Object defaultValue, Function<Object, String> valueForQueryMapper) {
         this.name = name;
         this.defaultValue = defaultValue;
+        this.valueForQueryMapper = valueForQueryMapper;
     }
 
     public String getName() {
         return name;
     }
 
-    public String getDefaultValue() {
-        return defaultValue;
+    public Object getDefaultValueForQuery() {
+        return mapToValueForQuery(defaultValue);
     }
 
-    public static Optional<SqliteType> mapJavaType(Class<?> javaType) {
+    public String mapToValueForQuery(Object value) {
+        return this.valueForQueryMapper.apply(value);
+    }
+
+    public static Optional<SqliteType> mapFromJavaType(Class<?> javaType) {
         return Optional.ofNullable(javaTypeMap.get(javaType));
     }
 
@@ -32,8 +39,13 @@ public enum SqliteType {
         Map<Class<?>, SqliteType> map = new HashMap<>();
 
         Arrays.asList(
-                boolean.class,
+                Boolean.class,
+                Byte.class,
+                Short.class,
+                Integer.class,
+                Long.class,
                 Timestamp.class,
+                boolean.class,
                 byte.class,
                 short.class,
                 int.class,

@@ -10,6 +10,10 @@ public class SomeTable extends BaseModel {
     @Db
     private String text;
 
+    public SomeTable() {
+
+    }
+
     public SomeTable(long x, String text) {
         this.x = x;
         this.text = text;
