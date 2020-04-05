@@ -63,6 +63,22 @@ public class Tests {
         assertEquals("fields shall be identical", someTable.getX(), model2.getX());
     }
 
+    @Test
+    public void testUpdate() {
+        SomeTable someTable = new SomeTable(69, "deja vu");
+        throwIfErr(Jsqlite.insert(someTable));
+
+        someTable.setX(42);
+        someTable.setText("i've been in this place before");
+        throwIfErr(Jsqlite.update(someTable));
+
+        Result<List<SomeTable>, Exception> selectResult = Jsqlite.selectN(SomeTable.class, "WHERE s.id = ?", someTable.getId());
+        throwIfErr(selectResult);
+        SomeTable someTableFetched = selectResult.unwrap().get(0);
+        assertEquals(42, someTableFetched.getX());
+        assertEquals("i've been in this place before", someTableFetched.getText());
+    }
+
     private static void throwIfErr(Result<?, ? extends Exception> result) {
         result.getErr().ifPresent(e -> {throw new RuntimeException(e);});
     }

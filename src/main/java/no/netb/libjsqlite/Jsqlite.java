@@ -51,6 +51,7 @@ public class Jsqlite {
                             .map(c -> String.format("%s = %s", c.getNameForQuery(), c.getValueForQuery(model)))
                             .collect(Collectors.joining(", ")));
 
+            System.out.println(sql);
             PreparedStatement preparedStatement = dbconn.prepareStatement(sql);
             preparedStatement.setObject(1, model.getId());
             preparedStatement.execute();

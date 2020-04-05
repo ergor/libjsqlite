@@ -23,7 +23,15 @@ public class SomeTable extends BaseModel {
         return x;
     }
 
+    public void setX(long x) {
+        this.x = x;
+    }
+
     public String getText() {
         return text;
+    }
+
+    public void setText(String text) {
+        this.text = text;
     }
 }
