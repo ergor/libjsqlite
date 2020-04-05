@@ -10,7 +10,7 @@ public class ReferencingSomeTable extends BaseModel {
     private String otherText;
 
     @Db
-    @Fk(SomeTable.class)
+    @Fk(model = SomeTable.class)
     private long someTableId;
 
     public ReferencingSomeTable() {

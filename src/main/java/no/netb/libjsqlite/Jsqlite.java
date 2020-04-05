@@ -3,7 +3,6 @@ package no.netb.libjsqlite;
 import no.netb.libjcommon.result.Result;
 import no.netb.libjcommon.tuples.Pair;
 import no.netb.libjsqlite.annotations.Db;
-import no.netb.libjsqlite.annotations.Pk;
 import no.netb.libjsqlite.resulttypes.updateresult.UpdateResult;
 
 import java.lang.reflect.Field;
@@ -29,10 +28,6 @@ public class Jsqlite {
         return dbconn;
     }
 
-    /* CREATE:
-     * INSERT INTO <class name> VALUES <field name,value pairs>
-     */
-
     /* SAVE:
      * if not exists: CREATE(all values)
      * else: UPDATE <class name> SET <field name,value pairs> WHERE id = <this.id>
@@ -41,36 +36,52 @@ public class Jsqlite {
     /* EXISTS:
      */
 
+    public static<T extends BaseModel> UpdateResult update(T model) {
+        try {
+            String tableName = getTableName(model.getClass()).getA();
+
+            Set<Column> columns = getAllColumnFields(model.getClass());
+            columns.forEach(c -> c.setFieldAccesible(true));
+
+            String sql = String.format("UPDATE \"%s\" SET %s WHERE id = ?",
+                    tableName,
+                    columns
+                            .stream()
+                            .filter(c -> !c.isPrimaryKey())
+                            .map(c -> String.format("%s = %s", c.getNameForQuery(), c.getValueForQuery(model)))
+                            .collect(Collectors.joining(", ")));
+
+            PreparedStatement preparedStatement = dbconn.prepareStatement(sql);
+            preparedStatement.setObject(1, model.getId());
+            preparedStatement.execute();
+            return UpdateResult.ok();
+        } catch (Exception e) {
+            return UpdateResult.err(e);
+        }
+    }
+
     public static<T extends BaseModel> UpdateResult insert(T model) {
         try {
             String tableName = getTableName(model.getClass()).getA();
 
-            List<String> columns = new ArrayList<>();
-            List<Object> values = new ArrayList<>();
+            Set<Column> columns = getAllColumnFields(model.getClass());
 
-            for (Field field : getAllColumnFields(model.getClass())) {
-                field.setAccessible(true);
-                if (field.isAnnotationPresent(Pk.class)) {
-                    Result<Integer, Exception> maxIdResult = getMaxId(model, field);
+            for (Column column : columns) {
+                column.setFieldAccesible(true);
+                if (column.isPrimaryKey()) {
+                    Result<Integer, Exception> maxIdResult = getMaxId(model, column);
                     if (maxIdResult.isErr()) {
                         return UpdateResult.err(maxIdResult.unwrapErr());
                     }
                     long nextId = maxIdResult.unwrap() + 1;
-                    values.add(nextId);
-                    field.set(model, nextId);
-                } else {
-                    values.add(field.get(model));
+                    column.setField(model, nextId);
                 }
-                columns.add(String.format("\"%s\"", field.getName()));
             }
 
             String sql = String.format("INSERT INTO \"%s\" (%s) VALUES (%s)",
                     tableName,
-                    String.join(", ", columns),
-                    values.stream()
-                            .map(o -> new Pair<>(SqliteType.mapFromJavaType(o.getClass()).orElseThrow(() -> new RuntimeException("Failed to map type " + o.getClass().getName())), o))
-                            .map(p -> p.getA().mapToValueForQuery(p.getB()))
-                            .collect(Collectors.joining(", ")));
+                    columns.stream().map(Column::getNameForQuery).collect(Collectors.joining(", ")),
+                    columns.stream().map(c -> c.getValueForQuery(model)).collect(Collectors.joining(", ")));
 
             System.out.println(sql);
 
@@ -82,10 +93,10 @@ public class Jsqlite {
         }
     }
 
-    private static<T extends BaseModel> Result<Integer, Exception> getMaxId(T model, Field idField) {
+    private static<T extends BaseModel> Result<Integer, Exception> getMaxId(T model, Column idColumn) {
         try {
             String tableName = getTableName(model.getClass()).getA();
-            String sql = String.format("SELECT MAX(%s) AS max_id FROM \"%s\"", idField.getName(), tableName);
+            String sql = String.format("SELECT MAX(%s) AS max_id FROM \"%s\"", idColumn.getNameForQuery(), tableName);
             PreparedStatement preparedStatement = dbconn.prepareStatement(sql);
             Integer maxId = preparedStatement.executeQuery().getInt("max_id");
             return Result.ok(maxId);
@@ -123,11 +134,11 @@ public class Jsqlite {
         }
     }
 
-    public static Set<Field> getAllColumnFields(Class<?> modelClass) {
+    public static Set<Column> getAllColumnFields(Class<?> modelClass) {
         return getAllColumnFields(modelClass, new HashSet<>());
     }
 
-    private static Set<Field> getAllColumnFields(Class<?> modelClass, Set<Field> collection) {
+    private static Set<Column> getAllColumnFields(Class<?> modelClass, Set<Column> collection) {
         if (modelClass == null) {
             return collection;
         }
@@ -135,6 +146,7 @@ public class Jsqlite {
         collection.addAll(
                 Arrays.stream(fields)
                         .filter(f -> f.isAnnotationPresent(Db.class))
+                        .map(Column::new)
                         .collect(Collectors.toSet())
         );
         return getAllColumnFields(modelClass.getSuperclass(), collection);
@@ -151,17 +163,17 @@ public class Jsqlite {
     private static <T extends BaseModel> List<T> mapToJavaModel(Class<T> modelClass, ResultSet resultSet) throws SQLException, IllegalAccessException, InstantiationException {
 
         List<T> rows = new ArrayList<>();
-        Set<Field> columnFields = getAllColumnFields(modelClass);
+        Set<Column> columns = getAllColumnFields(modelClass);
 
         while (resultSet.next()) {
             T obj = modelClass.newInstance();
-            for (Field field : columnFields) {
-                field.setAccessible(true);
+            for (Column column : columns) {
+                column.setFieldAccesible(true);
 
-                Object value = mapToJavaValue(resultSet, field);
+                Object value = mapToJavaValue(resultSet, column.getField());
 
-                field.set(obj, value);
-                field.setAccessible(false);
+                column.setField(obj, value);
+                column.setFieldAccesible(false);
             }
             rows.add(obj);
         }

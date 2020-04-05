@@ -15,5 +15,5 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 public @interface Fk {
 
-    Class<?extends BaseModel> value();
+    Class<?extends BaseModel> model();
 }

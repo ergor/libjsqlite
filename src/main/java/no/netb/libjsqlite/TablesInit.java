@@ -1,11 +1,7 @@
 package no.netb.libjsqlite;
 
-import no.netb.libjsqlite.annotations.Db;
-import no.netb.libjsqlite.annotations.Fk;
-import no.netb.libjsqlite.annotations.Pk;
 import no.netb.libjsqlite.resulttypes.updateresult.UpdateResult;
 
-import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -33,11 +29,11 @@ public class TablesInit {
 
     private static<T extends BaseModel> void createTable(Class<T> modelClass) throws SQLException {
 
-        List<Field> idFirstColumns = new ArrayList<>();
+        List<Column> idFirstColumns = new ArrayList<>();
         {
-            Set<Field> columns = Jsqlite.getAllColumnFields(modelClass);
-            Field primaryKey = columns.stream()
-                    .filter(f -> f.isAnnotationPresent(Pk.class))
+            Set<Column> columns = Jsqlite.getAllColumnFields(modelClass);
+            Column primaryKey = columns.stream()
+                    .filter(Column::isPrimaryKey)
                     .findAny()
                     .orElseThrow(() -> new RuntimeException("No primary key found for model: " + modelClass.getName()));
             columns.remove(primaryKey);
@@ -61,29 +57,26 @@ public class TablesInit {
         conn.createStatement().execute(statement);
     }
 
-    private static Optional<String> makeForeignKeys(List<Field> fields) {
-        Predicate<Field> isFk = f -> f.isAnnotationPresent(Fk.class);
+    private static Optional<String> makeForeignKeys(List<Column> fields) {
+        Predicate<Column> isFk = Column::isForeignKey;
 
         if (fields.stream().noneMatch(isFk)) {
             return Optional.empty();
         }
         return Optional.of(fields.stream()
                 .filter(isFk)
-                .map(f -> String.format("FOREIGN KEY (\"%s\") REFERENCES \"%s\"",
-                        f.getName(),
-                        f.getAnnotation(Fk.class).value().getSimpleName()))
+                .map(c -> String.format("FOREIGN KEY (%s) REFERENCES %s",
+                        c.getNameForQuery(),
+                        c.getFkNameForQuery()))
                 .collect(Collectors.joining(", ")));
     }
 
-    private static String makeField(Field field) {
-        Class<?> fieldType = field.getType();
-        SqliteType sqliteType = SqliteType.mapFromJavaType(fieldType)
-                .orElseThrow(() -> new IllegalStateException("TablesInit: field types exhausted. No mapping for: " + fieldType.getName()));
+    private static String makeField(Column column) {
+        boolean nullable = column.isNullable();
+        boolean primaryKey = column.isPrimaryKey();
+        SqliteType sqliteType = column.getSqliteTypeOrFail();
 
-        boolean nullable = field.getAnnotation(Db.class).nullable();
-        boolean primaryKey = field.isAnnotationPresent(Pk.class);
-
-        String columnDef = String.format("\"%s\" %s", field.getName(), sqliteType.getName()); // "columnName" TYPE
+        String columnDef = String.format("%s %s", column.getNameForQuery(), sqliteType.getName()); // "columnName" TYPE
         String constraint1 = nullable ? "DEFAULT NULL" : String.format("NOT NULL DEFAULT %s", sqliteType.getDefaultValueForQuery()); // DEFAULT NULL | NOT NULL DEFAULT x
         String constraint2 = primaryKey ? "PRIMARY KEY ASC" : ""; //
 

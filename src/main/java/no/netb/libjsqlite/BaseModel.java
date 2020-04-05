@@ -12,4 +12,8 @@ public abstract class BaseModel {
     public long getId() {
         return id;
     }
+
+    public boolean isNew() {
+        return id == 0;
+    }
 }
