@@ -21,6 +21,5 @@ public abstract class BaseModel {
     public void saveOrFail() {
         UpdateResult saveResult = Jsqlite.save(this);
         saveResult.getErr().ifPresent(e -> {throw new RuntimeException(e);});
-        saveResult.unwrap().commit();
     }
 }
