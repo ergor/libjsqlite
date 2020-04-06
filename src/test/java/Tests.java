@@ -7,6 +7,7 @@ import no.netb.libjsqlite.TablesInit;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -30,9 +31,9 @@ public class Tests {
 
     @BeforeClass
     public static void testCreateTables() {
-        throwIfErr(TablesInit.createTables(modelClasses));
+        throwIfErr(TablesInit.createTablesIfNotExists(modelClasses));
 
-        someTable = new SomeTable(420, "hello");
+        someTable = new SomeTable(420, "hello", new Timestamp(10000000000L), false);
         throwIfErr(Jsqlite.insert(someTable));
         //insertResult.getOk().flatMap(DbOkAction::commit).ifPresent(Exception::printStackTrace);
 
@@ -65,11 +66,14 @@ public class Tests {
 
     @Test
     public void testUpdate() {
-        SomeTable someTable = new SomeTable(69, "deja vu");
+        SomeTable someTable = new SomeTable(69, "deja vu", new Timestamp(0), false);
         throwIfErr(Jsqlite.insert(someTable));
 
+        Timestamp newTime = new Timestamp(797979797979L);
         someTable.setX(42);
         someTable.setText("i've been in this place before");
+        someTable.setTimestamp(newTime);
+        someTable.setBool(true);
         throwIfErr(Jsqlite.update(someTable));
 
         Result<List<SomeTable>, Exception> selectResult = Jsqlite.selectN(SomeTable.class, "WHERE s.id = ?", someTable.getId());
@@ -77,6 +81,8 @@ public class Tests {
         SomeTable someTableFetched = selectResult.unwrap().get(0);
         assertEquals(42, someTableFetched.getX());
         assertEquals("i've been in this place before", someTableFetched.getText());
+        assertEquals(newTime.getTime(), someTable.getTimestamp().getTime());
+        assertEquals(true, someTable.isBool());
     }
 
     private static void throwIfErr(Result<?, ? extends Exception> result) {

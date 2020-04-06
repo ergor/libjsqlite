@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 
 public class TablesInit {
 
-    public static UpdateResult createTables(List<Class<? extends BaseModel>> models) {
+    public static UpdateResult createTablesIfNotExists(List<Class<? extends BaseModel>> models) {
         System.out.println("Table initialization:");
 
         for (Class<? extends BaseModel> modelClass : models) {
@@ -66,7 +66,7 @@ public class TablesInit {
         return Optional.of(fields.stream()
                 .filter(isFk)
                 .map(c -> String.format("FOREIGN KEY (%s) REFERENCES %s",
-                        c.getNameForQuery(),
+                        c.getColumnNameForQuery(),
                         c.getFkNameForQuery()))
                 .collect(Collectors.joining(", ")));
     }
@@ -74,10 +74,10 @@ public class TablesInit {
     private static String makeField(Column column) {
         boolean nullable = column.isNullable();
         boolean primaryKey = column.isPrimaryKey();
-        SqliteType sqliteType = column.getSqliteTypeOrFail();
+        TypeMapping.AbstractType abstractType = column.getAbstractTypeOrFail();
 
-        String columnDef = String.format("%s %s", column.getNameForQuery(), sqliteType.getName()); // "columnName" TYPE
-        String constraint1 = nullable ? "DEFAULT NULL" : String.format("NOT NULL DEFAULT %s", sqliteType.getDefaultValueForQuery()); // DEFAULT NULL | NOT NULL DEFAULT x
+        String columnDef = String.format("%s %s", column.getColumnNameForQuery(), abstractType.getTypeNameForQuery()); // "columnName" TYPE
+        String constraint1 = nullable ? "DEFAULT NULL" : String.format("NOT NULL DEFAULT %s", abstractType.getDefaultValueForQuery()); // DEFAULT NULL | NOT NULL DEFAULT x
         String constraint2 = primaryKey ? "PRIMARY KEY ASC" : ""; //
 
         return String.join(" ", columnDef, constraint1, constraint2);

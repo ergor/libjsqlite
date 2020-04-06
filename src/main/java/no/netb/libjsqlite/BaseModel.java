@@ -2,6 +2,7 @@ package no.netb.libjsqlite;
 
 import no.netb.libjsqlite.annotations.Db;
 import no.netb.libjsqlite.annotations.Pk;
+import no.netb.libjsqlite.resulttypes.updateresult.UpdateResult;
 
 public abstract class BaseModel {
 
@@ -15,5 +16,11 @@ public abstract class BaseModel {
 
     public boolean isNew() {
         return id == 0;
+    }
+
+    public void saveOrFail() {
+        UpdateResult saveResult = Jsqlite.save(this);
+        saveResult.getErr().ifPresent(e -> {throw new RuntimeException(e);});
+        saveResult.unwrap().commit();
     }
 }

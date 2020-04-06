@@ -6,6 +6,8 @@ import no.netb.libjsqlite.annotations.Pk;
 
 import java.lang.reflect.Field;
 
+import static no.netb.libjsqlite.TypeMapping.AbstractType;
+
 public class Column {
 
     private Field field;
@@ -26,7 +28,7 @@ public class Column {
         return String.format("\"%s\"", name);
     }
 
-    public String getNameForQuery() {
+    public String getColumnNameForQuery() {
         return formatColumnName(field.getName());
     }
 
@@ -37,18 +39,18 @@ public class Column {
     /**
      * @throws IllegalStateException If no mapping for type found
      */
-    public SqliteType getSqliteTypeOrFail() {
-        return SqliteType.mapFromJavaType(field.getType())
+    public AbstractType getAbstractTypeOrFail() {
+        return TypeMapping.toAbstractType(field)
                 .orElseThrow(() -> new IllegalStateException("Column.java: field types exhausted. No mapping for: " + field.getType().getName()));
     }
 
     public String getValueForQuery(Object modelInstance) {
-        SqliteType sqliteType =  getSqliteTypeOrFail();
+        AbstractType abstractType =  getAbstractTypeOrFail();
 
         String valueForSql;
         try {
             setFieldAccesible(true);
-            valueForSql = sqliteType.mapToValueForQuery(field.get(modelInstance));
+            valueForSql = abstractType.mapValueForQuery(field.get(modelInstance));
         } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
         } finally {

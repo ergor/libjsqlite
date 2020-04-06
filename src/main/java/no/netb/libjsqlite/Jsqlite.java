@@ -51,7 +51,7 @@ public class Jsqlite {
                     columns
                             .stream()
                             .filter(c -> !c.isPrimaryKey())
-                            .map(c -> String.format("%s = %s", c.getNameForQuery(), c.getValueForQuery(model)))
+                            .map(c -> String.format("%s = %s", c.getColumnNameForQuery(), c.getValueForQuery(model)))
                             .collect(Collectors.joining(", ")));
 
             System.out.println(sql);
@@ -84,7 +84,7 @@ public class Jsqlite {
 
             String sql = String.format("INSERT INTO \"%s\" (%s) VALUES (%s)",
                     tableName,
-                    columns.stream().map(Column::getNameForQuery).collect(Collectors.joining(", ")),
+                    columns.stream().map(Column::getColumnNameForQuery).collect(Collectors.joining(", ")),
                     columns.stream().map(c -> c.getValueForQuery(model)).collect(Collectors.joining(", ")));
 
             System.out.println(sql);
@@ -100,7 +100,7 @@ public class Jsqlite {
     private static<T extends BaseModel> Result<Integer, Exception> getMaxId(T model, Column idColumn) {
         try {
             String tableName = getTableName(model.getClass()).getA();
-            String sql = String.format("SELECT MAX(%s) AS max_id FROM \"%s\"", idColumn.getNameForQuery(), tableName);
+            String sql = String.format("SELECT MAX(%s) AS max_id FROM \"%s\"", idColumn.getColumnNameForQuery(), tableName);
             PreparedStatement preparedStatement = dbconn.prepareStatement(sql);
             Integer maxId = preparedStatement.executeQuery().getInt("max_id");
             return Result.ok(maxId);
@@ -125,6 +125,7 @@ public class Jsqlite {
 
     private static <T extends BaseModel> Result<List<T>, Exception> executeN(Class<T> modelClass, String query, Object... args) {
         try {
+            System.out.println(query);
             PreparedStatement preparedStatement = dbconn.prepareStatement(query);
             if (args != null) {
                 for (int i = 0; i < args.length; i++) {
