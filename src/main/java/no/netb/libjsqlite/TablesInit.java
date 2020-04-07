@@ -9,12 +9,15 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class TablesInit {
 
+    private static final Logger LOG = Logger.getLogger(TablesInit.class.getName());
+
     public static UpdateResult createTablesIfNotExists(List<Class<? extends BaseModel>> models) {
-        System.out.println("Table initialization:");
+        LOG.fine("Table initialization:");
 
         for (Class<? extends BaseModel> modelClass : models) {
             try {
@@ -51,7 +54,7 @@ public class TablesInit {
                 foreignKeys.isPresent() ? "," : "",
                 foreignKeys.orElse(""));
 
-        System.out.println(statement);
+        LOG.fine(statement);
 
         Connection conn = Jsqlite.getConnection();
         conn.createStatement().execute(statement);

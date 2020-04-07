@@ -8,20 +8,32 @@ import no.netb.libjsqlite.resulttypes.updateresult.UpdateResult;
 import java.lang.reflect.Field;
 import java.sql.*;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class Jsqlite {
 
+    private static final Logger LOG = Logger.getLogger(Jsqlite.class.getName());
+
     private static Connection dbconn;
     static {
+        System.setProperty(
+                "java.util.logging.config.file",
+                Jsqlite.class.getClassLoader().getResource("log.properties").getFile()
+        );
         try {
             dbconn = DriverManager.getConnection("jdbc:sqlite:test.db");
             dbconn.setAutoCommit(false);
-            System.out.println("Opened database successfully");
+            LOG.info("Opened database successfully");
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.log(Level.SEVERE, "Failed to open database", e);
             System.exit(1);
         }
+    }
+
+    public Jsqlite(String database) {
+
     }
 
     public static Connection getConnection() {
@@ -54,7 +66,7 @@ public class Jsqlite {
                             .map(c -> String.format("%s = %s", c.getColumnNameForQuery(), c.getValueForQuery(model)))
                             .collect(Collectors.joining(", ")));
 
-            System.out.println(sql);
+            LOG.fine(sql);
             PreparedStatement preparedStatement = dbconn.prepareStatement(sql);
             preparedStatement.setObject(1, model.getId());
             preparedStatement.execute();
@@ -87,7 +99,7 @@ public class Jsqlite {
                     columns.stream().map(Column::getColumnNameForQuery).collect(Collectors.joining(", ")),
                     columns.stream().map(c -> c.getValueForQuery(model)).collect(Collectors.joining(", ")));
 
-            System.out.println(sql);
+            LOG.fine(sql);
 
             PreparedStatement preparedStatement = dbconn.prepareStatement(sql);
             preparedStatement.execute();
@@ -125,7 +137,7 @@ public class Jsqlite {
 
     private static <T extends BaseModel> Result<List<T>, Exception> executeN(Class<T> modelClass, String query, Object... args) {
         try {
-            System.out.println(query);
+            LOG.fine(query);
             PreparedStatement preparedStatement = dbconn.prepareStatement(query);
             if (args != null) {
                 for (int i = 0; i < args.length; i++) {
