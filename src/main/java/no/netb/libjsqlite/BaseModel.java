@@ -18,8 +18,8 @@ public abstract class BaseModel {
         return id == 0;
     }
 
-    public void saveOrFail() {
-        UpdateResult saveResult = Jsqlite.save(this);
+    public void saveOrFail(Database database) {
+        UpdateResult saveResult = database.save(this);
         saveResult.getErr().ifPresent(e -> {throw new RuntimeException(e);});
     }
 }

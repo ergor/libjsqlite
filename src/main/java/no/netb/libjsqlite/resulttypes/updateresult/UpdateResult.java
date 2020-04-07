@@ -1,17 +1,17 @@
 package no.netb.libjsqlite.resulttypes.updateresult;
 
 import no.netb.libjcommon.result.Result;
-import no.netb.libjsqlite.Jsqlite;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Optional;
 
 public abstract class UpdateResult extends Result<UpdateOkAction, Exception> {
 
-    public static UpdateOk ok() {
+    public static UpdateOk ok(Connection connection) {
         return new UpdateOk(() -> {
             try {
-                Jsqlite.getConnection().commit();
+                connection.commit();
                 return Optional.empty();
             } catch (SQLException e) {
                 return Optional.of(e);
