@@ -34,7 +34,7 @@ public class Jsqlite {
             LOG.info("jsqlite: successfully opened database " + path);
             return Result.ok(database);
         } catch (SQLException e) {
-            LOG.log(Level.SEVERE, "Failed to open database", e);
+            LOG.log(Level.WARNING, "jsqlite: failed to open database " + path, e);
             return Result.err(e);
         }
     }
