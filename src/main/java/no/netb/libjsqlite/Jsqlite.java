@@ -19,13 +19,6 @@ public class Jsqlite {
 
     private static final Logger LOG = Logger.getLogger(Jsqlite.class.getName());
 
-    static {
-        System.setProperty(
-                "java.util.logging.config.file",
-                Jsqlite.class.getClassLoader().getResource("log.properties").getFile()
-        );
-    }
-
     public static Result<Database, SQLException> connect(String path, boolean autoCommit) {
         try {
             Connection connection = DriverManager.getConnection("jdbc:sqlite:" + path);
