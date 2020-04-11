@@ -38,7 +38,7 @@ public class Tests {
 
         throwIfErr(database.createTablesIfNotExists(modelClasses));
 
-        someTable = new SomeTable(420, "hello", new Timestamp(10000000000L), false);
+        someTable = new SomeTable(420, "hello", new Timestamp(10000000000L), false, SomeTable.SomeEnum.MEMBER_A);
         throwIfErr(database.insert(someTable));
         //insertResult.getOk().flatMap(DbOkAction::commit).ifPresent(Exception::printStackTrace);
 
@@ -71,16 +71,20 @@ public class Tests {
 
     @Test
     public void testUpdate() {
-        SomeTable someTable = new SomeTable(69, "deja vu", new Timestamp(0), false);
+        // insert some initial values
+        SomeTable someTable = new SomeTable(69, "deja vu", new Timestamp(0), false, SomeTable.SomeEnum.MEMBER_A);
         throwIfErr(database.insert(someTable));
 
+        // update
         Timestamp newTime = new Timestamp(797979797979L);
         someTable.setX(42);
         someTable.setText("i've been in this place before");
         someTable.setTimestamp(newTime);
         someTable.setBool(true);
+        someTable.setSomeEnum(SomeTable.SomeEnum.MEMBER_B);
         throwIfErr(database.update(someTable));
 
+        // fetch from DB and check that all fields was updated
         Result<List<SomeTable>, Exception> selectResult = database.selectN(SomeTable.class, "WHERE s.id = ?", someTable.getId());
         throwIfErr(selectResult);
         SomeTable someTableFetched = selectResult.unwrap().get(0);
@@ -88,6 +92,7 @@ public class Tests {
         assertEquals("i've been in this place before", someTableFetched.getText());
         assertEquals(newTime.getTime(), someTable.getTimestamp().getTime());
         assertEquals(true, someTable.isBool());
+        assertEquals(SomeTable.SomeEnum.MEMBER_B, someTable.getSomeEnum());
     }
 
     private static void throwIfErr(Result<?, ? extends Exception> result) {
