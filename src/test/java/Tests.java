@@ -1,9 +1,9 @@
 import models.ReferencingSomeTable;
 import models.SomeTable;
-import no.netb.libjcommon.result.Result;
 import no.netb.libjsqlite.BaseModel;
 import no.netb.libjsqlite.Database;
 import no.netb.libjsqlite.Jsqlite;
+import no.netb.libjsqlite.JsqliteException;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -32,36 +32,28 @@ public class Tests {
     private static ReferencingSomeTable referencingSomeTable;
 
     @BeforeClass
-    public static void testCreateTables() {
-        Result<Database, SQLException> connectResult = Jsqlite.connect("test.db", false);
-        database = connectResult.unwrap();
+    public static void testCreateTables() throws SQLException, JsqliteException {
+        database = Jsqlite.connect("test.db", false);
 
-        throwIfErr(database.createTablesIfNotExists(modelClasses));
+        database.createTablesIfNotExists(modelClasses);
 
         someTable = new SomeTable(420, "hello", new Timestamp(10000000000L), false, SomeTable.SomeEnum.MEMBER_A);
-        throwIfErr(database.insert(someTable));
-        //insertResult.getOk().flatMap(DbOkAction::commit).ifPresent(Exception::printStackTrace);
+        database.insert(someTable);
 
         referencingSomeTable = new ReferencingSomeTable("hello from the other side", someTable.getId());
-        throwIfErr(database.insert(referencingSomeTable));
+        database.insert(referencingSomeTable);
     }
 
     @Test
-    public void testSelectN() {
-        Result<List<ReferencingSomeTable>, Exception> selectResult = database.selectN(ReferencingSomeTable.class, "WHERE r.someTableId= ?", 1);
-        throwIfErr(selectResult);
-
-        List<ReferencingSomeTable> models = selectResult.unwrap();
+    public void testSelectN() throws IllegalAccessException, SQLException, InstantiationException {
+        List<ReferencingSomeTable> models = database.selectN(ReferencingSomeTable.class, "WHERE r.someTableId= ?", 1);
         assertEquals("There shall be one row matching the query", 1, models.size());
 
         ReferencingSomeTable model = models.get(0);
         assertEquals("fields shall be identical", referencingSomeTable.getOtherText(), model.getOtherText());
         assertEquals("fields shall be identical", referencingSomeTable.getSomeTableId(), model.getSomeTableId());
 
-        Result<List<SomeTable>, Exception> selectResult2 = database.selectN(SomeTable.class, "WHERE s.id = ?", model.getSomeTableId());
-        throwIfErr(selectResult2);
-
-        List<SomeTable> models2 = selectResult2.unwrap();
+        List<SomeTable> models2 = database.selectN(SomeTable.class, "WHERE s.id = ?", model.getSomeTableId());
         assertEquals("There shall be one row matching the query", 1, models2.size());
 
         SomeTable model2 = models2.get(0);
@@ -70,10 +62,10 @@ public class Tests {
     }
 
     @Test
-    public void testUpdate() {
+    public void testUpdate() throws SQLException, IllegalAccessException, InstantiationException {
         // insert some initial values
         SomeTable someTable = new SomeTable(69, "deja vu", new Timestamp(0), false, SomeTable.SomeEnum.MEMBER_A);
-        throwIfErr(database.insert(someTable));
+        database.insert(someTable);
 
         // update
         Timestamp newTime = new Timestamp(797979797979L);
@@ -82,20 +74,14 @@ public class Tests {
         someTable.setTimestamp(newTime);
         someTable.setBool(true);
         someTable.setSomeEnum(SomeTable.SomeEnum.MEMBER_B);
-        throwIfErr(database.update(someTable));
+        database.update(someTable);
 
         // fetch from DB and check that all fields was updated
-        Result<List<SomeTable>, Exception> selectResult = database.selectN(SomeTable.class, "WHERE s.id = ?", someTable.getId());
-        throwIfErr(selectResult);
-        SomeTable someTableFetched = selectResult.unwrap().get(0);
+        SomeTable someTableFetched = database.selectN(SomeTable.class, "WHERE s.id = ?", someTable.getId()).get(0);
         assertEquals(42, someTableFetched.getX());
         assertEquals("i've been in this place before", someTableFetched.getText());
         assertEquals(newTime.getTime(), someTable.getTimestamp().getTime());
         assertEquals(true, someTable.isBool());
         assertEquals(SomeTable.SomeEnum.MEMBER_B, someTable.getSomeEnum());
-    }
-
-    private static void throwIfErr(Result<?, ? extends Exception> result) {
-        result.getErr().ifPresent(e -> {throw new RuntimeException(e);});
     }
 }

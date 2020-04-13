@@ -1,7 +1,5 @@
 package no.netb.libjsqlite;
 
-import no.netb.libjcommon.result.Result;
-
 import java.lang.reflect.Field;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -98,28 +96,21 @@ public class TypeMapping {
         return Optional.ofNullable(JAVA_TO_ABSTRACT_TYPE_MAP.get(type));
     }
 
-    static <T extends BaseModel> Result<List<T>, Exception> mapToJavaModel(Class<T> modelClass, ResultSet resultSet) {
-        try {
-            List<T> rows = new ArrayList<>();
-            Set<Column> columns = Jsqlite.getAllColumnFields(modelClass);
+    static <T extends BaseModel> List<T> mapToJavaModel(Class<T> modelClass, ResultSet resultSet) throws SQLException, IllegalAccessException, InstantiationException {
+        List<T> models = new ArrayList<>();
+        Set<Column> columns = Jsqlite.getAllColumnFields(modelClass);
 
-            while (resultSet.next()) {
-                T obj = modelClass.newInstance();
-                for (Column column : columns) {
-                    column.setFieldAccesible(true);
-
-                    Object value = mapToJavaValue(resultSet, column.getField());
-
-                    column.setField(obj, value);
-                    column.setFieldAccesible(false);
+        while (resultSet.next()) {
+            T obj = modelClass.newInstance();
+            for (Column column : columns) {
+                Object value = mapToJavaValue(resultSet, column.getField());
+                try (ReflectionAccess access = ReflectionAccess.grant(column.getField())) {
+                    access.setFieldValue(obj, value);
                 }
-                rows.add(obj);
             }
-            return Result.ok(rows);
+            models.add(obj);
         }
-        catch (Exception e) {
-            return Result.err(e);
-        }
+        return models;
     }
 
     private static Object mapToJavaValue(ResultSet resultSet, Field field) throws SQLException {

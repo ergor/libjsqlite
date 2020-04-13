@@ -1,7 +1,5 @@
 package no.netb.libjsqlite;
 
-import no.netb.libjcommon.result.Result;
-import no.netb.libjcommon.tuples.Pair;
 import no.netb.libjsqlite.annotations.Db;
 
 import java.lang.reflect.Field;
@@ -19,25 +17,17 @@ public class Jsqlite {
 
     private static final Logger LOG = Logger.getLogger(Jsqlite.class.getName());
 
-    public static Result<Database, SQLException> connect(String path, boolean autoCommit) {
+    public static Database connect(String path, boolean autoCommit) throws SQLException {
         try {
             Connection connection = DriverManager.getConnection("jdbc:sqlite:" + path);
             connection.setAutoCommit(autoCommit);
             Database database = new Database(connection);
-            LOG.info("jsqlite: successfully opened database " + path);
-            return Result.ok(database);
+            LOG.info("jsqlite: successfully opened database: " + path);
+            return database;
         } catch (SQLException e) {
-            LOG.log(Level.WARNING, "jsqlite: failed to open database " + path, e);
-            return Result.err(e);
+            LOG.log(Level.WARNING, "jsqlite: failed to open database: " + path, e);
+            throw e;
         }
-    }
-
-    /**
-     * @return Pair: (table name, table var)
-     */
-    static<T extends BaseModel> Pair<String, String> getTableName(Class<T> modelClass) {
-        String name = modelClass.getSimpleName();
-        return new Pair<>(name, String.valueOf(name.toLowerCase().charAt(0)));
     }
 
     static Set<Column> getAllColumnFields(Class<?> modelClass) {

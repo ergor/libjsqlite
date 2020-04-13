@@ -10,7 +10,7 @@ import static no.netb.libjsqlite.TypeMapping.AbstractType;
 
 public class Column {
 
-    private Field field;
+    private final Field field;
 
     public Column(Field field) {
         this.field = field;
@@ -48,13 +48,8 @@ public class Column {
         AbstractType abstractType =  getAbstractTypeOrFail();
 
         String valueForSql;
-        try {
-            setFieldAccesible(true);
-            valueForSql = abstractType.mapValueForQuery(field.get(modelInstance));
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
-        } finally {
-            setFieldAccesible(false);
+        try (ReflectionAccess access = ReflectionAccess.grant(this.field)) {
+            valueForSql = abstractType.mapValueForQuery(access.getFieldValue(modelInstance));
         }
 
         return valueForSql;
