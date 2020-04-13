@@ -30,6 +30,10 @@ public class Database {
         TODO: implement EXISTS
      */
 
+    public void commit() throws SQLException {
+        conn.commit();
+    }
+
     public <T extends BaseModel> UpdateResult save(T model) {
         if (model.isNew()) {
             return insert(model);
