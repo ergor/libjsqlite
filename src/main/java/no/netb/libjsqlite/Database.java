@@ -14,6 +14,11 @@ import java.util.stream.Collectors;
 
 public class Database {
 
+    public enum CloseAction {
+        COMMIT,
+        ROLLBACK
+    }
+
     private static final Logger LOG = Logger.getLogger(Database.class.getName());
 
     private Connection conn;
@@ -32,6 +37,20 @@ public class Database {
 
     public void rollback() throws SQLException {
         conn.rollback();
+    }
+
+    public void close(CloseAction closeAction) throws SQLException {
+        switch (closeAction) {
+            case COMMIT:
+                commit();
+                break;
+            case ROLLBACK:
+                rollback();
+                break;
+            default:
+                LOG.warning("jsqlite: close() called with unimplemented CloseAction");
+        }
+        conn.close();
     }
 
     public <T extends BaseModel> void save(T model) throws SQLException {
