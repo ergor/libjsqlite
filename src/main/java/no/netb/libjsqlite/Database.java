@@ -30,6 +30,10 @@ public class Database {
         conn.commit();
     }
 
+    public void rollback() throws SQLException {
+        conn.rollback();
+    }
+
     public <T extends BaseModel> void save(T model) throws SQLException {
         if (model.isNew()) {
             insert(model);
